@@ -54,6 +54,7 @@ env/
 # IDEs
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
