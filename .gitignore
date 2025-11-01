@@ -72,6 +72,7 @@ desktop.ini
 config_backup_*.json
 temp_mcp_*.json
 nul
+_cleanup/
 
 # Credentials and secrets
 .env

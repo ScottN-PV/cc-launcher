@@ -31,6 +31,7 @@ class ProjectSelector(ttk.Frame):
             parent: Parent widget
             on_path_changed: Callback when path changes (receives path string)
             initial_path: Initial project path
+            recent_paths: List of recent project paths
             **kwargs: Additional frame options
         """
         super().__init__(parent, **kwargs)
@@ -42,13 +43,11 @@ class ProjectSelector(ttk.Frame):
         self._create_widgets()
         self._layout_widgets()
 
-        # Set initial path if provided
         if initial_path:
             self.set_path(initial_path)
 
     def _create_widgets(self):
         """Create UI widgets."""
-        # Path entry
         self.path_var = tk.StringVar(value=self.current_path)
         self.path_var.trace_add("write", self._on_path_entry_changed)
 
@@ -58,10 +57,8 @@ class ProjectSelector(ttk.Frame):
             values=self.recent_paths,
             font=("Segoe UI", 10)
         )
-        # Allow manual text entry
         self.path_combo.configure(state="normal")
 
-        # Browse button
         self.browse_button = ttk.Button(
             self,
             text="📁 Browse",
@@ -70,12 +67,20 @@ class ProjectSelector(ttk.Frame):
             width=12
         )
 
-        # Validation indicator
         self.indicator_label = ttk.Label(
             self,
             text="",
             font=("Segoe UI", 12)
         )
+
+        self.helper_label = ttk.Label(
+            self,
+            text="Select the root folder of the project you want Claude Code to use before launching.",
+            bootstyle="info",
+            wraplength=420,
+            justify=LEFT
+        )
+        self._helper_visible = False
 
     def _layout_widgets(self):
         """Layout widgets in grid."""
@@ -85,11 +90,12 @@ class ProjectSelector(ttk.Frame):
         self.path_combo.grid(row=0, column=1, sticky=EW, padx=5)
         self.browse_button.grid(row=0, column=2, padx=(5, 0))
 
+        self._update_helper_visibility()
+
     def _on_browse_clicked(self):
         """Handle browse button click."""
         logger.info("Browse button clicked")
 
-        # Open directory picker
         initial_dir = self.current_path if self.current_path and Path(self.current_path).exists() else str(Path.home())
 
         selected_path = filedialog.askdirectory(
@@ -115,16 +121,15 @@ class ProjectSelector(ttk.Frame):
         if not path:
             self.indicator_label.configure(text="")
             self.current_path = ""
+            self._update_helper_visibility()
             return
 
-        # Validate path
         valid, message = validate_path(path)
 
         if valid:
             self.indicator_label.configure(text="✓", foreground="green")
             self.current_path = path
 
-            # Trigger callback
             try:
                 self.on_path_changed(path)
             except Exception as e:
@@ -132,6 +137,8 @@ class ProjectSelector(ttk.Frame):
         else:
             self.indicator_label.configure(text="✗", foreground="red")
             self.current_path = ""
+
+        self._update_helper_visibility()
 
     def set_path(self, path: str):
         """
@@ -165,3 +172,14 @@ class ProjectSelector(ttk.Frame):
         """Update the recent paths dropdown values."""
         self.recent_paths = list(dict.fromkeys(paths))  # preserve order, ensure unique
         self.path_combo.configure(values=self.recent_paths)
+
+    def _update_helper_visibility(self):
+        """Show or hide the helper text based on whether a valid path is selected."""
+        should_show = not bool(self.current_path)
+
+        if should_show and not self._helper_visible:
+            self.helper_label.grid(row=1, column=0, columnspan=3, sticky=EW, pady=(6, 0))
+            self._helper_visible = True
+        elif not should_show and self._helper_visible:
+            self.helper_label.grid_remove()
+            self._helper_visible = False

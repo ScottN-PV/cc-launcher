@@ -1,9 +1,9 @@
-# Claude Code Launcher - Python Dependencies
-# Updated after Flet system tray testing failure
+# Claude Code MCP Manager - Python Dependencies
+# Cross-platform shared dependencies
 # Framework: Tkinter + ttkbootstrap + pystray
 
 # UI Framework
-ttkbootstrap==1.10.1  # Modern themed Tkinter with Windows 11 style themes
+ttkbootstrap==1.10.1  # Modern themed Tkinter (cross-platform)
 
 # System Tray
 pystray==0.19.5       # System tray icon support (Windows, macOS, Linux)
@@ -11,10 +11,6 @@ Pillow==11.0.0        # Image handling for tray icons
 
 # Async Operations
 aiohttp==3.11.0       # Async HTTP client for NPM registry validation
-
-# Windows Integration
-pywin32==308          # Windows API access (registry, credential manager)
-keyring==25.5.0       # Secure credential storage using Windows Credential Manager
 
 # Process Management
 psutil==6.1.0         # Cross-platform process utilities (Claude Code detection)
@@ -28,3 +24,6 @@ pytest==8.4.2         # Test framework
 pytest-asyncio==0.25.2 # Async test support
 
 # Note: Tkinter comes bundled with Python (no need to install separately)
+# For platform-specific dependencies, also install:
+#   Windows: pip install -r requirements-windows.txt
+#   macOS/Linux: pip install -r requirements-unix.txt

@@ -1,4 +1,4 @@
-"""Command panel UI component for Claude Code Launcher."""
+"""Command panel UI component for Claude Code MCP Manager."""
 
 import logging
 import tkinter as tk
@@ -27,9 +27,15 @@ class LaunchCommandPanel(ttk.Frame):
             font=("Segoe UI", 12, "bold")
         )
 
+        import sys
+        if sys.platform == "win32":
+            desc_text = "Copy the command below and run it in PowerShell to start Claude Code with the selected MCP servers."
+        else:
+            desc_text = "Copy the command below and run it in your terminal (bash/zsh) to start Claude Code with the selected MCP servers."
+        
         self.description_label = ttk.Label(
             self,
-            text="Copy the command below and run it in PowerShell to start Claude Code with the selected MCP servers.",
+            text=desc_text,
             wraplength=460,
             bootstyle="secondary"
         )
@@ -103,9 +109,15 @@ class LaunchCommandPanel(ttk.Frame):
 
     def show_command(self, command: str) -> None:
         """Display a launch command and enable copying."""
+        import sys
+        if sys.platform == "win32":
+            status_text = "Command ready. Copy and run it in PowerShell."
+        else:
+            status_text = "Command ready. Copy and run it in your terminal."
+        
         self._current_command = command
         self._set_command_text(command)
-        self._update_status("Command ready. Copy and run it in PowerShell.", "success")
+        self._update_status(status_text, "success")
 
     def _update_status(self, message: str, bootstyle: str) -> None:
         self.status_label.configure(text=message, bootstyle=bootstyle)

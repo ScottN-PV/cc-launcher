@@ -1,4 +1,4 @@
-"""Preferences data model for Claude Code Launcher."""
+"""Preferences data model for Claude Code MCP Manager."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal
@@ -12,7 +12,7 @@ class Preferences:
     theme: Literal["light", "dark"] = "dark"
 
     # Paths
-    default_path: str = "C:\\Dev"
+    default_path: str = ""
     last_path: str = ""
     recent_projects: List[str] = field(default_factory=list)
     project_last_profiles: Dict[str, str] = field(default_factory=dict)
@@ -24,6 +24,7 @@ class Preferences:
     minimize_on_launch: bool = True
     close_to_tray: bool = True
     auto_start: bool = False
+    tray_enabled: bool = True  # System tray support (may be auto-disabled on some Linux DE)
 
     # Server management
     auto_update_servers: bool = True
@@ -52,6 +53,7 @@ class Preferences:
             "minimize_on_launch": self.minimize_on_launch,
             "close_to_tray": self.close_to_tray,
             "auto_start": self.auto_start,
+            "tray_enabled": self.tray_enabled,
             "auto_update_servers": self.auto_update_servers,
             "skip_validation": self.skip_validation,
             "force_powershell": self.force_powershell,
@@ -63,7 +65,7 @@ class Preferences:
         """Create from dictionary loaded from JSON."""
         return cls(
             theme=data.get("theme", "dark"),
-            default_path=data.get("default_path", "C:\\Dev"),
+            default_path=data.get("default_path", ""),
             last_path=data.get("last_path", ""),
             recent_projects=data.get("recent_projects", []),
             project_last_profiles=data.get("project_last_profiles", {}),
@@ -71,6 +73,7 @@ class Preferences:
             minimize_on_launch=data.get("minimize_on_launch", True),
             close_to_tray=data.get("close_to_tray", True),
             auto_start=data.get("auto_start", False),
+            tray_enabled=data.get("tray_enabled", True),
             auto_update_servers=data.get("auto_update_servers", True),
             skip_validation=data.get("skip_validation", False),
             force_powershell=data.get("force_powershell", False),

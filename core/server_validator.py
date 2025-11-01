@@ -84,7 +84,7 @@ class ServerValidator:
 
     def extract_package_name(self, server: MCPServer) -> Optional[str]:
         """
-        Extract NPM package name from server args
+        Extract NPM package name from server args.
 
         Args:
             server: MCPServer instance
@@ -95,16 +95,15 @@ class ServerValidator:
         if server.type != "stdio" or not server.args:
             return None
 
-        # Look for npx patterns: npx -y @scope/package or npx package-name
+        # Pattern: npx -y @scope/package or npx package-name
         args = server.args
         for i, arg in enumerate(args):
             if arg in ["npx", "-y"] and i + 1 < len(args):
-                # Next arg after npx or -y is likely the package
                 next_arg = args[i + 1]
                 if next_arg not in ["-y", "--yes"]:
                     return next_arg
 
-        # Fallback: last arg that looks like a package (@scope/name or package-name)
+        # Fallback: find last arg that resembles a package name
         for arg in reversed(args):
             if arg.startswith("@") or ("-" in arg and not arg.startswith("-")):
                 return arg
@@ -195,7 +194,7 @@ class ServerValidator:
 
     async def validate_server(self, server: MCPServer, force_refresh: bool = False) -> MCPServer:
         """
-        Validate a single server
+        Validate a single server.
 
         Args:
             server: MCPServer to validate
@@ -204,12 +203,10 @@ class ServerValidator:
         Returns:
             MCPServer with updated validation status
         """
-        # Skip validation if in offline mode
         if self.skip_validation and not force_refresh:
             logger.debug(f"Skipping validation for '{server.id}' (offline mode)")
             return server
 
-        # Check cache
         cache_key = self._get_cache_key(server)
         if not force_refresh and cache_key in self.cache:
             cache_entry = self.cache[cache_key]
@@ -219,7 +216,6 @@ class ServerValidator:
                 server.validation.cached = True
                 return server
 
-        # Perform validation
         validation = ValidationStatus()
         validation.last_checked = datetime.now(timezone.utc)
         validation.cached = False
@@ -227,13 +223,11 @@ class ServerValidator:
         if server.type == "stdio":
             package_name = self.extract_package_name(server)
             if package_name:
-                # Check NPM registry
                 npm_available, npm_version, error = await self.check_npm_package(package_name)
                 validation.npm_available = npm_available
                 validation.npm_version = npm_version
                 validation.error_message = error
 
-                # Check local installation
                 locally_installed, local_version = self.check_local_installation(package_name)
                 validation.locally_installed = locally_installed
                 validation.local_version = local_version
@@ -244,18 +238,15 @@ class ServerValidator:
                 logger.warning(f"Could not extract package name for '{server.id}'")
 
         elif server.type == "http":
-            # For HTTP servers, just check if URL is reachable (optional, can be expensive)
-            # For now, mark as valid if URL exists
+            # Mark as valid if URL is present (actual reachability check would be expensive)
             if server.url:
-                validation.npm_available = True  # Not NPM, but use field to indicate "valid"
+                validation.npm_available = True
                 logger.info(f"HTTP server '{server.id}' validated (URL present)")
             else:
                 validation.error_message = "No URL specified"
 
-        # Update server
         server.validation = validation
 
-        # Cache result
         self.cache[cache_key] = validation.to_dict()
         self._save_cache()
 

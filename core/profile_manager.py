@@ -46,19 +46,15 @@ class ProfileManager:
             Tuple of (success, error_message, profile)
         """
         try:
-            # Load current config
             preferences, servers, profiles = self.config_manager.load()
 
-            # Check for duplicate ID
             if profile_id in profiles:
                 return False, f"Profile '{profile_id}' already exists", None
 
-            # Validate server IDs exist
             for server_id in server_ids:
                 if server_id not in servers:
                     return False, f"Server '{server_id}' does not exist", None
 
-            # Create new profile
             now = datetime.now()
             profile = Profile(
                 id=profile_id,
@@ -70,10 +66,8 @@ class ProfileManager:
                 description=description
             )
 
-            # Add to profiles dict
             profiles[profile_id] = profile
 
-            # Save to config
             self.config_manager.save(preferences, servers, profiles)
 
             logger.info(f"Profile created: {profile_id} with {len(server_ids)} servers")
@@ -104,20 +98,17 @@ class ProfileManager:
             Tuple of (success, error_message, profile)
         """
         try:
-            # Load current config
             preferences, servers, profiles = self.config_manager.load()
 
             target_profile = profiles.get(profile_id)
             if target_profile is None:
                 return False, f"Profile '{profile_id}' not found", None
 
-            # Validate server IDs if provided
             if server_ids is not None:
                 for server_id in server_ids:
                     if server_id not in servers:
                         return False, f"Server '{server_id}' does not exist", None
 
-            # Update fields
             if name is not None:
                 target_profile.name = name
             if server_ids is not None:
@@ -125,9 +116,7 @@ class ProfileManager:
             if description is not None:
                 target_profile.description = description
 
-            # Update modified timestamp
             target_profile.modified = datetime.now()
-
             target_profile.scope = "global"
             target_profile.project_path = None
 
@@ -153,21 +142,16 @@ class ProfileManager:
             Tuple of (success, error_message)
         """
         try:
-            # Load current config
             preferences, servers, profiles = self.config_manager.load()
 
-            # Check profile exists
             if profile_id not in profiles:
                 return False, f"Profile '{profile_id}' not found"
 
-            # Remove profile
             del profiles[profile_id]
 
-            # If this was the last used profile, clear preference
             if preferences.last_profile == profile_id:
                 preferences.last_profile = "default"
 
-            # Save to config
             self.config_manager.save(preferences, servers, profiles)
 
             logger.info(f"Profile deleted: {profile_id}")

@@ -1,0 +1,68 @@
+name: Cross-Platform Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python-version: ['3.11', '3.12']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install shared dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Install Windows-specific dependencies
+      if: runner.os == 'Windows'
+      run: pip install -r requirements-windows.txt
+    
+    - name: Install Unix-specific dependencies
+      if: runner.os != 'Windows'
+      run: pip install -r requirements-unix.txt
+    
+    - name: Run tests
+      run: python -m pytest tests/ -v --tb=short
+    
+    - name: Test imports
+      run: python -c "import main; import core.terminal_manager; import ui.main_window"
+    
+    - name: Platform-specific checks
+      shell: python
+      run: |
+        import sys
+        print(f"Platform: {sys.platform}")
+        
+        # Test terminal detection
+        from core.terminal_manager import TerminalManager
+        tm = TerminalManager()
+        terminal = tm.find_terminal()
+        print(f"Detected terminal: {terminal}")
+        
+        # Test env var expansion
+        from utils.env_expander import expand_env_vars
+        if sys.platform == "win32":
+            result = expand_env_vars("%CD%\\test", "C:\\Dev")
+            print(f"Windows env expansion: {result}")
+        else:
+            result = expand_env_vars("$PWD/test", "/home/dev")
+            print(f"Unix env expansion: {result}")
+

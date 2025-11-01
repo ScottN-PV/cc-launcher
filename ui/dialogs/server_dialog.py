@@ -22,7 +22,7 @@ class ServerDialog(ttb.Toplevel):
     def __init__(self, parent, mode: str = "add", server: Optional[MCPServer] = None,
                  on_save: Optional[Callable[[str, MCPServer], None]] = None):
         """
-        Initialize server dialog
+        Initialize server dialog.
 
         Args:
             parent: Parent window
@@ -37,16 +37,13 @@ class ServerDialog(ttb.Toplevel):
         self.on_save = on_save
         self.result = None
 
-        # Configure dialog
         self.title(f"{'Add' if mode == 'add' else 'Edit'} MCP Server")
         self.geometry("")
         self.resizable(True, True)
 
-        # Make modal
         self.transient(parent)
         self.grab_set()
 
-        # Center on parent
         self.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
@@ -58,11 +55,9 @@ class ServerDialog(ttb.Toplevel):
 
     def _create_widgets(self):
         """Create dialog widgets"""
-        # Main container with padding
         main_frame = ttb.Frame(self, padding=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Server ID field (read-only for edit mode)
         id_frame = ttb.Frame(main_frame)
         id_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -74,7 +69,6 @@ class ServerDialog(ttb.Toplevel):
         if self.mode == "edit":
             self.id_entry.configure(state="readonly")
 
-        # Server Type dropdown
         type_frame = ttb.Frame(main_frame)
         type_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -85,7 +79,6 @@ class ServerDialog(ttb.Toplevel):
         self.type_combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
         self.type_combo.bind("<<ComboboxSelected>>", self._on_type_changed)
 
-        # Description field
         desc_frame = ttb.Frame(main_frame)
         desc_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -94,7 +87,6 @@ class ServerDialog(ttb.Toplevel):
         ttb.Entry(desc_frame, textvariable=self.description_var, width=40).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        # Category field
         cat_frame = ttb.Frame(main_frame)
         cat_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -104,14 +96,12 @@ class ServerDialog(ttb.Toplevel):
                      values=["general", "core", "documentation", "database", "ui", "tools"],
                      width=37).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        # Separator
         ttb.Separator(main_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=10)
 
         # ===== stdio-specific fields =====
         self.stdio_frame = ttb.LabelFrame(main_frame, text="stdio Configuration", padding=10)
         self.stdio_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        # Command field
         cmd_frame = ttb.Frame(self.stdio_frame)
         cmd_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -120,7 +110,6 @@ class ServerDialog(ttb.Toplevel):
         ttb.Entry(cmd_frame, textvariable=self.command_var).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        # Args field (multiline)
         args_label = ttb.Label(self.stdio_frame, text="Arguments (one per line):", anchor=tk.W)
         args_label.pack(fill=tk.X, pady=(0, 5))
 
@@ -131,7 +120,6 @@ class ServerDialog(ttb.Toplevel):
         self.args_text.pack(fill=tk.BOTH, expand=True)
         args_scroll.config(command=self.args_text.yview)
 
-        # Env vars field (multiline, KEY=VALUE format)
         env_label = ttb.Label(self.stdio_frame, text="Environment Variables (KEY=VALUE):", anchor=tk.W)
         env_label.pack(fill=tk.X, pady=(10, 5))
 
@@ -146,7 +134,6 @@ class ServerDialog(ttb.Toplevel):
         self.http_frame = ttb.LabelFrame(main_frame, text="HTTP Configuration", padding=10)
         self.http_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        # URL field
         url_frame = ttb.Frame(self.http_frame)
         url_frame.pack(fill=tk.X, pady=(0, 10))
 
@@ -155,7 +142,6 @@ class ServerDialog(ttb.Toplevel):
         ttb.Entry(url_frame, textvariable=self.url_var).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        # Headers field (multiline, KEY=VALUE format)
         headers_label = ttb.Label(self.http_frame, text="Headers (KEY=VALUE):", anchor=tk.W)
         headers_label.pack(fill=tk.X, pady=(0, 5))
 
@@ -175,10 +161,8 @@ class ServerDialog(ttb.Toplevel):
         ttb.Button(button_frame, text="Save", command=self._on_save,
                    bootstyle="success", width=15).pack(side=tk.RIGHT)
 
-        # Initialize visibility
         self._on_type_changed()
 
-        # Enable dynamic resizing for multiline inputs
         self._bind_auto_resize(self.args_text, min_lines=4, max_lines=14)
         self._bind_auto_resize(self.env_text, min_lines=3, max_lines=12)
         self._bind_auto_resize(self.headers_text, min_lines=3, max_lines=12)
@@ -244,12 +228,10 @@ class ServerDialog(ttb.Toplevel):
             if self.server.type == "stdio":
                 self.command_var.set(self.server.command or "")
 
-                # Populate args
                 if self.server.args:
                     self.args_text.delete("1.0", tk.END)
                     self.args_text.insert("1.0", "\n".join(self.server.args))
 
-                # Populate env
                 if self.server.env:
                     self.env_text.delete("1.0", tk.END)
                     env_lines = [f"{k}={v}" for k, v in self.server.env.items()]
@@ -258,7 +240,6 @@ class ServerDialog(ttb.Toplevel):
             elif self.server.type == "http":
                 self.url_var.set(self.server.url or "")
 
-                # Populate headers
                 if self.server.headers:
                     self.headers_text.delete("1.0", tk.END)
                     header_lines = [f"{k}={v}" for k, v in self.server.headers.items()]
@@ -273,7 +254,7 @@ class ServerDialog(ttb.Toplevel):
         self._adjust_size()
 
     def _parse_key_value_text(self, text_widget) -> dict:
-        """Parse KEY=VALUE format from text widget"""
+        """Parse KEY=VALUE or KEY:VALUE pairs from text widget."""
         result = {}
         content = text_widget.get("1.0", tk.END).strip()
 

@@ -1,24 +1,22 @@
-"""Environment variable expansion utilities for Claude Code Launcher."""
+"""Environment variable expansion utilities for Claude Code MCP Manager."""
 
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Dict
 
 
 def expand_env_vars(value: str, project_path: str, extra_vars: Dict[str, str] = None) -> str:
     """
-    Expand Windows environment variables in a string.
+    Expand environment variables (cross-platform).
 
-    Supports:
-    - %CD% -> project_path
-    - %USERPROFILE% -> user's home directory
-    - %TEMP% -> temp directory
-    - %PATH% -> system PATH
-    - Any other %VAR% -> os.environ['VAR']
+    Supports Windows (%VAR%) and Unix ($VAR, ${VAR}) syntax.
+    Special vars: %CD%/$PWD -> project_path, %USERPROFILE%/$HOME -> home dir.
 
     Args:
         value: String potentially containing environment variables
-        project_path: Current project directory (replaces %CD%)
+        project_path: Current project directory
         extra_vars: Additional variables to expand
 
     Returns:
@@ -27,40 +25,62 @@ def expand_env_vars(value: str, project_path: str, extra_vars: Dict[str, str] = 
     if not value:
         return value
 
-    # Create expanded vars dict
     expanded_vars = extra_vars.copy() if extra_vars else {}
 
-    # Add special CD variable
+    # Map project path to common environment variable names
     expanded_vars["CD"] = project_path
-    expanded_vars["cd"] = project_path  # Case insensitive
+    expanded_vars["cd"] = project_path
+    expanded_vars["PWD"] = project_path
+    expanded_vars["pwd"] = project_path
 
-    # Find all %VAR% patterns
-    pattern = r"%([^%]+)%"
-    matches = re.findall(pattern, value)
-
+    is_windows = sys.platform == "win32"
     result = value
-    for var_name in matches:
-        var_upper = var_name.upper()
-        var_lower = var_name.lower()
 
-        # Check extra vars first
-        if var_name in expanded_vars:
-            replacement = expanded_vars[var_name]
-        elif var_upper in expanded_vars:
-            replacement = expanded_vars[var_upper]
-        elif var_lower in expanded_vars:
-            replacement = expanded_vars[var_lower]
-        # Then check environment variables (case insensitive on Windows)
-        elif var_upper in os.environ:
-            replacement = os.environ[var_upper]
-        elif var_name in os.environ:
-            replacement = os.environ[var_name]
-        else:
-            # Variable not found, leave as-is
-            continue
+    # Unix-style: $VAR or ${VAR}
+    if not is_windows or "$" in result:
+        unix_pattern = r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)"
+        unix_matches = re.finditer(unix_pattern, result)
+        
+        replacements = {}
+        for match in unix_matches:
+            var_name = match.group(1) or match.group(2)
+            full_match = match.group(0)
+            
+            if var_name in expanded_vars:
+                replacements[full_match] = expanded_vars[var_name]
+            elif var_name in os.environ:
+                replacements[full_match] = os.environ[var_name]
+            elif var_name.upper() == "HOME" and "HOME" in os.environ:
+                replacements[full_match] = os.environ["HOME"]
+            elif var_name.upper() == "HOME":
+                replacements[full_match] = str(Path.home())
+        
+        for old, new in replacements.items():
+            result = result.replace(old, new)
 
-        # Replace the variable
-        result = result.replace(f"%{var_name}%", replacement)
+    # Windows-style: %VAR%
+    if is_windows or "%" in result:
+        windows_pattern = r"%([^%]+)%"
+        windows_matches = re.findall(windows_pattern, result)
+
+        for var_name in windows_matches:
+            var_upper = var_name.upper()
+            var_lower = var_name.lower()
+
+            if var_name in expanded_vars:
+                replacement = expanded_vars[var_name]
+            elif var_upper in expanded_vars:
+                replacement = expanded_vars[var_upper]
+            elif var_lower in expanded_vars:
+                replacement = expanded_vars[var_lower]
+            elif var_upper in os.environ:
+                replacement = os.environ[var_upper]
+            elif var_name in os.environ:
+                replacement = os.environ[var_name]
+            else:
+                continue
+
+            result = result.replace(f"%{var_name}%", replacement)
 
     return result
 

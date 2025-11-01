@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import TclError
 
 import pytest
 
@@ -8,7 +9,10 @@ from ui.components.server_list import ServerList
 
 @pytest.fixture
 def tk_root():
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except TclError as exc:
+        pytest.skip(f"Tkinter not available: {exc}")
     root.withdraw()
     yield root
     root.destroy()

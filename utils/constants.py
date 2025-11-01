@@ -1,4 +1,4 @@
-"""Constants and pre-loaded MCP server templates for Claude Code Launcher."""
+"""Constants and pre-loaded MCP server templates for Claude Code MCP Manager."""
 
 from pathlib import Path
 from typing import Dict
@@ -15,7 +15,7 @@ LOCK_FILE = CONFIG_DIR / "cc-launch.lock"
 LOG_FILE = CONFIG_DIR / "cc-launcher.log"
 
 # Application
-APP_NAME = "Claude Code Launcher"
+APP_NAME = "Claude Code MCP Manager"
 APP_VERSION = "1.0.0"
 CONFIG_VERSION = "1.0.0"  # Configuration file format version
 WINDOW_MIN_WIDTH = 600
@@ -28,7 +28,7 @@ VALIDATION_CACHE_HOURS = 24
 NPM_REGISTRY_URL = "https://registry.npmjs.org"
 VALIDATION_TIMEOUT_SECONDS = 5
 
-# Pre-loaded MCP Server Templates
+# Pre-loaded MCP Server Templates (Cross-Platform)
 MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
     "filesystem": MCPServer(
         id="filesystem",
@@ -36,8 +36,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=1,
-        command="cmd",
-        args=["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "%CD%"],
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-filesystem", "."],
         env={},
         description="Access local file system for reading and writing files",
         category="core"
@@ -48,8 +48,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=2,
-        command="cmd",
-        args=["/c", "npx", "-y", "@ref-mcp/server"],
+        command="npx",
+        args=["-y", "@ref-mcp/server"],
         env={},
         description="Search documentation and references online",
         category="documentation"
@@ -60,8 +60,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=3,
-        command="cmd",
-        args=["/c", "npx", "-y", "@supabase/mcp-server"],
+        command="npx",
+        args=["-y", "@supabase/mcp-server"],
         env={},
         description="Supabase database integration and management",
         category="database"
@@ -72,8 +72,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=4,
-        command="cmd",
-        args=["/c", "npx", "-y", "lucide-icons-mcp"],
+        command="npx",
+        args=["-y", "lucide-icons-mcp"],
         env={},
         description="Search and use Lucide icon library",
         category="ui"
@@ -84,8 +84,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=5,
-        command="cmd",
-        args=["/c", "npx", "-y", "@modelcontextprotocol/server-shadcn"],
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-shadcn"],
         env={},
         description="shadcn/ui component library integration",
         category="ui"
@@ -96,8 +96,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=6,
-        command="cmd",
-        args=["/c", "npx", "-y", "@sequential-thinking/mcp"],
+        command="npx",
+        args=["-y", "@sequential-thinking/mcp"],
         env={},
         description="Advanced reasoning and problem-solving tool",
         category="reasoning"
@@ -108,8 +108,8 @@ MCP_SERVER_TEMPLATES: Dict[str, MCPServer] = {
         enabled=False,
         is_template=True,
         order=7,
-        command="cmd",
-        args=["/c", "npx", "-y", "@motion/mcp-server"],
+        command="npx",
+        args=["-y", "@motion/mcp-server"],
         env={},
         description="Motion animation library for web interfaces",
         category="animation"

@@ -23,7 +23,7 @@ class ServerList(ttk.Frame):
                  on_validate_server: Optional[Callable] = None,
                  on_validate_all: Optional[Callable] = None):
         """
-        Initialize server list component
+        Initialize server list component.
 
         Args:
             parent: Parent widget
@@ -36,7 +36,6 @@ class ServerList(ttk.Frame):
         """
         super().__init__(parent)
 
-        # Store callbacks
         self.on_server_toggle = on_server_toggle
         self.on_add_server = on_add_server
         self.on_edit_server = on_edit_server
@@ -44,7 +43,6 @@ class ServerList(ttk.Frame):
         self.on_validate_server = on_validate_server
         self.on_validate_all = on_validate_all
 
-        # Server data storage: {server_id: MCPServer}
         self.servers: Dict[str, MCPServer] = {}
 
         self._create_widgets()
@@ -52,7 +50,6 @@ class ServerList(ttk.Frame):
 
     def _create_widgets(self):
         """Create UI widgets"""
-        # Button toolbar at top
         toolbar = ttk.Frame(self)
         toolbar.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
@@ -94,42 +91,35 @@ class ServerList(ttk.Frame):
         )
         self.validate_btn.pack(side=tk.RIGHT)
 
-        # Treeview frame with scrollbar
         tree_frame = ttk.Frame(self)
         tree_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
 
-        # Scrollbar
         scrollbar = ttb.Scrollbar(tree_frame, bootstyle="round")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        # Treeview with columns
         columns = ("name", "description", "status")
         self.tree = ttb.Treeview(tree_frame, columns=columns, show="tree headings",
                                   yscrollcommand=scrollbar.set, height=10)
         self.tree.grid(row=0, column=0, sticky="nsew")
         scrollbar.config(command=self.tree.yview)
 
-        # Column configuration
         self.tree.column("#0", width=50, minwidth=40, stretch=False, anchor=tk.CENTER)
         self.tree.column("name", width=180, minwidth=120, anchor="w")
         self.tree.column("description", width=320, minwidth=180, anchor="w")
         self.tree.column("status", width=140, minwidth=100, stretch=False, anchor="w")
 
-        # Headings
         self.tree.heading("#0", text="✓", anchor=tk.CENTER)
         self.tree.heading("name", text="Name", anchor="w")
         self.tree.heading("description", text="Description", anchor="w")
         self.tree.heading("status", text="Status", anchor="w")
 
-        # Bind events
         self.tree.bind("<Double-Button-1>", self._handle_double_click)
         self.tree.bind("<Button-3>", self._handle_right_click)  # Right-click for context menu
         self.tree.bind("<space>", self._handle_space_toggle)  # Space to toggle checkbox
         self.tree.bind("<<TreeviewSelect>>", lambda _event: self._update_delete_button_state())
 
-        # Configure grid weights
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -199,7 +189,6 @@ class ServerList(ttk.Frame):
 
     def refresh_display(self):
         """Refresh the Treeview display with current server data"""
-        # Clear existing items
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -211,13 +200,11 @@ class ServerList(ttk.Frame):
 
         active_category = self.filter_var.get()
 
-        # Sort servers by order field
         sorted_servers = sorted(self.servers.items(),
                                key=lambda x: x[1].order if x[1].order is not None else 999)
 
         inserted = 0
 
-        # Add servers to tree
         for server_id, server in sorted_servers:
             server_category = server.category or "Uncategorized"
             if active_category != "All Categories" and server_category != active_category:
@@ -226,7 +213,6 @@ class ServerList(ttk.Frame):
             checkbox = self._get_checkbox_symbol(server.enabled)
             status = self._get_status_display(server)
 
-            # Use ID as the display name (servers don't have separate name field)
             display_name = server_id.replace("-", " ").title()
             self.tree.insert("", "end", iid=server_id, text=checkbox,
                            values=(display_name, server.description or "", status))

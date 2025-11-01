@@ -1,4 +1,4 @@
-"""Main application window for Claude Code Launcher."""
+"""Main application window for Claude Code MCP Manager."""
 
 import asyncio
 import logging
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(ttk.Window):
-    """Main application window with modern Windows 11 styling."""
+    """Main application window with modern cross-platform styling."""
 
     def __init__(self, config_manager: ConfigManager):
         """
@@ -42,14 +42,11 @@ class MainWindow(ttk.Window):
         Args:
             config_manager: Configuration manager instance
         """
-        # Initialize preferences
         self.config_manager = config_manager
         preferences, servers, global_profiles = config_manager.load()
 
-        # Determine initial theme
         initial_theme = THEMES.get(preferences.theme, "darkly")
 
-        # Initialize ttkbootstrap window
         super().__init__(
             title=APP_NAME,
             themename=initial_theme,
@@ -59,59 +56,50 @@ class MainWindow(ttk.Window):
 
         logger.info(f"MainWindow initialized with theme: {initial_theme}")
 
-        # Store references
         self.current_theme = preferences.theme
         self.tray_manager = None  # Will be set by main.py
-        self.servers = servers  # Store server data
-        self.preferences = preferences  # Store preferences
+        self.servers = servers
+        self.preferences = preferences
         self.preferences.skip_validation = False
         self.preferences.recent_projects = self._sanitize_recent_projects(self.preferences.recent_projects)
-        self.global_profiles = global_profiles  # Global profiles from config
+        self.global_profiles = global_profiles
+        self._tray_warning_shown = False
 
-        # Initialize profile manager (business logic)
         self.profile_manager_core = ProfileManagerCore(config_manager)
         self.profile_manager_core.set_current_project(self.preferences.last_path or None)
         self.profiles = self.profile_manager_core.get_all_profiles(self.preferences.last_path or None)
 
-        # Initialize terminal manager
         self.terminal_manager = TerminalManager()
 
-        # Initialize server validator
         self.server_validator = ServerValidator(skip_validation=False)
 
         # Internal flag to prevent recursive refresh loops when selecting profiles programmatically
         self._profile_selection_internal = False
 
-        # Configure grid layout
         self.columnconfigure(0, weight=1)
-        # Make both row 3 and row 4 expandable (server list can be in either depending on banner)
         self.rowconfigure(3, weight=1)
         self.rowconfigure(4, weight=1)
 
-        # Build UI
         self._build_ui()
         self._refresh_profiles(select_profile_id=self.preferences.last_profile)
         self._ensure_window_capacity()
 
-        # Configure window close behavior
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-        # Bind keyboard shortcuts
         self.bind("<Control-p>", lambda e: self._focus_profile_combobox())
 
         logger.info("MainWindow ready")
 
     def _build_ui(self):
-        """Build the user interface with placeholder components."""
-
-        # ===== Header with title and theme toggle =====
+        """Build the user interface."""
+        # Header with title and theme toggle
         header_frame = ttk.Frame(self, padding=10)
         header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
 
-        # Configure header grid
         header_frame.columnconfigure(1, weight=1)
+        header_frame.columnconfigure(2, weight=0)
+        header_frame.columnconfigure(3, weight=0)
 
-        # App title
         title_label = ttk.Label(
             header_frame,
             text=APP_NAME,
@@ -119,7 +107,15 @@ class MainWindow(ttk.Window):
         )
         title_label.grid(row=0, column=0, sticky="w")
 
-        # Theme toggle button
+        self.tray_enabled_var = tk.BooleanVar(value=getattr(self.preferences, "tray_enabled", True))
+        self.tray_toggle = ttk.Checkbutton(
+            header_frame,
+            text="System Tray",
+            variable=self.tray_enabled_var,
+            command=self._on_tray_toggle
+        )
+        self.tray_toggle.grid(row=0, column=2, padx=(10, 0))
+
         self.theme_button = ttk.Button(
             header_frame,
             text="☀" if self.current_theme == "dark" else "🌙",
@@ -127,13 +123,12 @@ class MainWindow(ttk.Window):
             command=self._toggle_theme,
             bootstyle="secondary"
         )
-        self.theme_button.grid(row=0, column=2, sticky="e")
+        self.theme_button.grid(row=0, column=3, sticky="e")
 
-        # ===== Project Path Section =====
+        # Project Directory
         project_frame = ttk.LabelFrame(self, text="Project Directory", padding=10)
         project_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-        # Create ProjectSelector component
         self.project_selector = ProjectSelector(
             project_frame,
             on_path_changed=self._on_project_path_changed,
@@ -143,11 +138,10 @@ class MainWindow(ttk.Window):
         self.project_selector.pack(fill=X, expand=True)
         self.project_selector.update_recent_paths(self.preferences.recent_projects)
 
-        # ===== Profile Section =====
+        # Profile
         profile_frame = ttk.LabelFrame(self, text="Profile", padding=10)
         profile_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
-        # Create ProfileManager component
         self.profile_manager = ProfileManager(
             profile_frame,
             profiles=self.profiles,
@@ -159,19 +153,16 @@ class MainWindow(ttk.Window):
         )
         self.profile_manager.pack(fill=BOTH, expand=True)
 
-        # ===== Offline Mode Warning Banner (Row 3 when shown) =====
         self.server_frame_row = 3
 
-        # ===== Server List Section =====
+        # MCP Servers
         server_frame = ttk.LabelFrame(self, text="MCP Servers", padding=10)
         server_frame.grid(row=self.server_frame_row, column=0, sticky="nsew", padx=10, pady=5)
-        self.server_frame = server_frame  # Store reference for regridding
+        self.server_frame = server_frame
 
-        # Make server frame expandable
         server_frame.columnconfigure(0, weight=1)
         server_frame.rowconfigure(0, weight=1)
 
-        # Create ServerList component
         self.server_list = ServerList(
             server_frame,
             on_server_toggle=self._on_server_toggle,
@@ -183,18 +174,15 @@ class MainWindow(ttk.Window):
         )
         self.server_list.grid(row=0, column=0, sticky="nsew")
 
-        # Load servers into list
         self.server_list.load_servers(self.servers)
 
-        # ===== Launch Controls Section =====
+        # Launch Controls
         launch_frame = ttk.Frame(self, padding=10)
         launch_frame.grid(row=5, column=0, sticky="ew", padx=10, pady=(5, 10))
-        self.launch_frame = launch_frame  # Store reference for regridding
+        self.launch_frame = launch_frame
 
-        # Configure launch frame grid
         launch_frame.columnconfigure(0, weight=1)
 
-        # Create command panel component
         self.launch_panel = LaunchCommandPanel(launch_frame)
         self.launch_panel.grid(row=0, column=0, pady=5, sticky="ew")
         self.launch_panel.bind("<<LaunchCommandPanelUpdated>>", lambda _: self._ensure_window_capacity())
@@ -336,7 +324,6 @@ class MainWindow(ttk.Window):
     def _toggle_theme(self):
         """Toggle between light and dark themes."""
         try:
-            # Toggle theme
             if self.current_theme == "dark":
                 new_theme = "light"
                 new_theme_name = THEMES["light"]
@@ -346,7 +333,6 @@ class MainWindow(ttk.Window):
                 new_theme_name = THEMES["dark"]
                 self.theme_button.configure(text="☀")
 
-            # Apply theme
             self.style.theme_use(new_theme_name)
             self.current_theme = new_theme
 
@@ -370,7 +356,6 @@ class MainWindow(ttk.Window):
         try:
             normalized_path = self._normalize_path(path) if path else ""
 
-            # Update preferences and current project context
             self.preferences.last_path = normalized_path or ""
             self.profile_manager_core.set_current_project(normalized_path or None)
 
@@ -381,7 +366,6 @@ class MainWindow(ttk.Window):
             if normalized_path:
                 desired_profile = self.preferences.project_last_profiles.get(normalized_path)
 
-            # Persist change and refresh available profiles
             self._refresh_profiles(select_profile_id=desired_profile)
             self._refresh_launch_command()
             self._persist_config()
@@ -426,6 +410,65 @@ class MainWindow(ttk.Window):
             self.geometry(f"{int(width)}x{int(height)}")
         except Exception as exc:
             logger.debug(f"Unable to adjust window size: {exc}")
+
+    def show_tray_unavailable_message(self):
+        """Inform the user that the system tray is unavailable and disable the preference."""
+        if getattr(self, "_tray_warning_shown", False):
+            return
+
+        self._tray_warning_shown = True
+
+        try:
+            messagebox.showwarning(
+                "System Tray Unavailable",
+                "The current desktop environment does not support system tray icons.\n\n"
+                "The application will continue running without a tray icon.",
+                parent=self
+            )
+        except Exception as exc:
+            logger.error("Failed to display tray unavailable warning: %s", exc)
+
+        if hasattr(self, "preferences") and self.preferences:
+            if getattr(self.preferences, "tray_enabled", True):
+                self.preferences.tray_enabled = False
+                try:
+                    self._persist_config()
+                except Exception as exc:
+                    logger.error("Error persisting tray preference update: %s", exc)
+        if hasattr(self, "tray_enabled_var"):
+            self.tray_enabled_var.set(False)
+
+    def _on_tray_toggle(self):
+        """Handle user toggling the system tray preference from the UI."""
+        enabled = bool(self.tray_enabled_var.get())
+
+        if not hasattr(self, "preferences") or self.preferences is None:
+            return
+
+        current_value = getattr(self.preferences, "tray_enabled", True)
+        if enabled == current_value:
+            return
+
+        self.preferences.tray_enabled = enabled
+
+        if enabled:
+            created = False
+            if self.tray_manager:
+                created = self.tray_manager.create_tray_icon()
+            if not created:
+                logger.info("Tray toggle requested but could not start tray icon")
+                self.preferences.tray_enabled = False
+                self.tray_enabled_var.set(False)
+                self.show_tray_unavailable_message()
+                return
+        else:
+            if self.tray_manager:
+                self.tray_manager.destroy_tray_icon()
+
+        try:
+            self._persist_config()
+        except Exception as exc:
+            logger.error("Failed to persist tray toggle state: %s", exc)
 
     def _on_closing(self):
         """Handle window close event."""

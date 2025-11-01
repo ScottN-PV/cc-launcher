@@ -1,8 +1,8 @@
 @echo off
-REM Claude Code Launcher - Development Launch Script
+REM Claude Code MCP Manager - Development Launch Script
 REM This script launches main.py in the current directory
 
-echo Starting Claude Code Launcher...
+echo Starting Claude Code MCP Manager...
 python main.py
 
 REM If Python exits with an error, pause to see the error message

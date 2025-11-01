@@ -78,8 +78,7 @@ def validate_url(url: str) -> Tuple[bool, str]:
 
 def validate_command(command: str, args: list) -> Tuple[bool, str]:
     """
-    Validate a command and arguments for execution.
-    Prevents command injection attacks.
+    Validate command and arguments to prevent injection attacks.
 
     Args:
         command: Command to execute
@@ -91,24 +90,21 @@ def validate_command(command: str, args: list) -> Tuple[bool, str]:
     if not command or command.strip() == "":
         return False, "Command cannot be empty"
 
-    # Check for dangerous characters in command
     dangerous_chars = [";", "&", "|", "`", "$", "(", ")", "<", ">", "\n", "\r"]
     for char in dangerous_chars:
         if char in command:
             return False, f"Command contains dangerous character: {char}"
 
-    # Validate each argument
     for arg in args:
         if not isinstance(arg, str):
             return False, f"Argument must be a string, got: {type(arg).__name__}"
 
-        # Check for command injection patterns
         injection_patterns = [
-            r";\s*\w",  # Command chaining with semicolon
-            r"&&",       # Command chaining with &&
-            r"\|\|",     # Command chaining with ||
-            r"`",        # Command substitution
-            r"\$\(",     # Command substitution
+            r";\s*\w",
+            r"&&",
+            r"\|\|",
+            r"`",
+            r"\$\(",
         ]
 
         for pattern in injection_patterns:

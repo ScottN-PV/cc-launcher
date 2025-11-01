@@ -53,9 +53,10 @@ class TestMCPTemplates:
         """Verify filesystem template has correct configuration."""
         fs = MCP_SERVER_TEMPLATES["filesystem"]
         assert fs.id == "filesystem"
-        assert fs.command == "cmd"
-        assert "@modelcontextprotocol/server-filesystem" in " ".join(fs.args)
-        assert "%CD%" in fs.args  # Should have %CD% for current directory
+        assert fs.command == "npx"
+        assert fs.args[0] in {"-y", "--yes"}
+        assert "@modelcontextprotocol/server-filesystem" in fs.args
+        assert "." in fs.args  # Current directory argument should be cross-platform
         assert fs.category == "core"
 
 

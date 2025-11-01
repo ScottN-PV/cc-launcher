@@ -1,0 +1,9 @@
+# Claude Code MCP Manager - Windows-Specific Dependencies
+# Install these in addition to requirements.txt on Windows
+
+# Windows API Integration
+pywin32==308          # Windows API access (registry, process management)
+
+# Credential Management
+keyring==25.5.0       # Secure credential storage using Windows Credential Manager
+

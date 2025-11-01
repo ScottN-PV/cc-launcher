@@ -1,4 +1,4 @@
-"""Configuration manager for Claude Code Launcher.
+"""Configuration Manager for Claude Code MCP Manager.
 
 Handles loading, saving, and validation of configuration files with:
 - Atomic writes with backup
@@ -44,7 +44,6 @@ class ConfigManager:
         self.project_profiles: Dict[str, Dict[str, Profile]] = {}
         self._legacy_cleanup_paths: Set[Path] = set()
 
-        # Ensure config directory exists
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"ConfigManager initialized: {self.config_file}")
@@ -149,20 +148,17 @@ class ConfigManager:
         Returns:
             Tuple of (Preferences, servers_dict, profiles_dict)
         """
-        # Acquire lock
         if not self._acquire_lock():
             logger.error(ERROR_MESSAGES["CONFIG_LOCKED"])
             raise RuntimeError(ERROR_MESSAGES["CONFIG_LOCKED"])
 
         try:
-            # Check if config file exists
             if not self.config_file.exists():
                 logger.info(ERROR_MESSAGES["CONFIG_NOT_FOUND"])
                 config_data = self._create_default_config()
                 self._save_raw(config_data)
                 return self._parse_config(config_data)
 
-            # Try to load config
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config_data = json.load(f)
@@ -171,14 +167,12 @@ class ConfigManager:
             except json.JSONDecodeError as e:
                 logger.error(f"Corrupted config file: {e}")
 
-                # Try to restore from backup
                 if self.backup_file.exists():
                     logger.info("Attempting to restore from backup")
                     try:
                         with open(self.backup_file, 'r', encoding='utf-8') as f:
                             config_data = json.load(f)
                         logger.info(ERROR_MESSAGES["BACKUP_RESTORED"])
-                        # Save restored config (post-migration)
                         config_data = self.migrate(config_data)
                         self._save_raw(config_data)
 
@@ -191,7 +185,6 @@ class ConfigManager:
                     config_data = self._create_default_config()
                     self._save_raw(config_data)
 
-            # Migrate if needed
             config_data = self.migrate(config_data)
 
             return self._parse_config(config_data)
@@ -209,11 +202,9 @@ class ConfigManager:
         Returns:
             Tuple of (Preferences, servers_dict, profiles_dict)
         """
-        # Parse preferences
         prefs = Preferences.from_dict(config_data.get("preferences", {}))
         prefs = self._sanitize_preferences(prefs)
 
-        # Parse servers
         servers: Dict[str, MCPServer] = {}
         raw_servers = config_data.get("servers", {}) or {}
         for server_id, server_data in raw_servers.items():
@@ -221,7 +212,7 @@ class ConfigManager:
                 if not isinstance(server_data, dict):
                     raise ValueError("Server entry is not a mapping")
 
-                server_data = dict(server_data)  # shallow copy for mutation safety
+                server_data = dict(server_data)
                 server_data.setdefault("id", server_id)
                 server_data.setdefault("type", "stdio")
 
@@ -231,7 +222,7 @@ class ConfigManager:
                 if explicit_type:
                     server.type = explicit_type
 
-                # Auto-detect HTTP servers that may have been saved without proper type
+                # Auto-correct servers that have URL but were incorrectly marked as stdio
                 if server.type == "stdio" and not server.command and server.url:
                     logger.debug(
                         "Correcting server '%s' type to 'http' based on stored URL", server_id
@@ -244,7 +235,6 @@ class ConfigManager:
             except Exception as e:
                 logger.error(f"Failed to parse server {server_id}: {e}")
 
-        # Parse global profiles first so promoted profiles can be merged
         profiles: Dict[str, Profile] = {}
         raw_profiles = config_data.get("profiles", {}) or {}
         for profile_id, profile_data in raw_profiles.items():
@@ -358,28 +348,22 @@ class ConfigManager:
         """
         Save configuration with atomic write and backup.
 
-        Process:
-        1. Acquire lock
-        2. Create backup of current config
-        3. Write to temporary file
-        4. Atomic rename to actual config
-        5. Release lock
+        Uses temp file + atomic rename pattern to prevent corruption if interrupted.
 
         Args:
             preferences: User preferences
             servers: Dictionary of MCP servers
             profiles: Dictionary of profiles
+            project_profiles: Optional project-specific profiles
         """
         if not self._acquire_lock():
             raise RuntimeError(ERROR_MESSAGES["CONFIG_LOCKED"])
 
         try:
-            # Create backup if config exists
             if self.config_file.exists():
                 shutil.copy2(self.config_file, self.backup_file)
                 logger.debug("Backup created")
 
-            # Update in-memory project profiles if provided
             if project_profiles is not None:
                 normalized_map: Dict[str, Dict[str, Profile]] = {}
                 for raw_path, profile_map in project_profiles.items():
@@ -389,7 +373,6 @@ class ConfigManager:
                     normalized_map[normalized_path] = deepcopy(profile_map)
                 self.project_profiles = normalized_map
 
-            # Prepare config data
             config_data = {
                 "version": CONFIG_VERSION,
                 "preferences": preferences.to_dict(),
@@ -404,12 +387,10 @@ class ConfigManager:
                 "project_profiles": self._serialize_project_profiles(self.project_profiles)
             }
 
-            # Write to temporary file first
             temp_file = self.config_file.with_suffix('.tmp')
             with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(config_data, f, indent=2, default=str)
 
-            # Atomic rename
             temp_file.replace(self.config_file)
             logger.info("Configuration saved successfully")
             self._cleanup_legacy_files()

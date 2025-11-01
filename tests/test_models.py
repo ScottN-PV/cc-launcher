@@ -14,7 +14,7 @@ class TestPreferences:
         """Test creating preferences with default values."""
         prefs = Preferences()
         assert prefs.theme == "dark"
-        assert prefs.default_path == "C:\\Dev"
+        assert prefs.default_path == ""
         assert prefs.last_path == ""
         assert prefs.last_profile == "default"
         assert prefs.minimize_on_launch is True

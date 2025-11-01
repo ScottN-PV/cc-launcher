@@ -1,13 +1,13 @@
 # Architecture
 
-The Claude Code Launcher is organised into modular layers that separate configuration management, business logic, UI components, and utilities. The following sections describe each layer and the flow of data through the application.
+Claude Code MCP Manager is organised into modular layers that separate configuration management, business logic, UI components, and utilities. The following sections describe each layer and the flow of data through the application.
 
 ## High-Level Flow
 1. **Startup** – `main.py` initialises logging, configuration management, and the Tkinter event loop.
-2. **Configuration load** – `ConfigManager` reads `%USERPROFILE%\.claude\cc-launch.json`, creating defaults and backups if necessary. Preferences, servers, and profiles are materialised into dataclass instances.
+2. **Configuration load** – `ConfigManager` reads `~/.claude/cc-launch.json` (Windows: `%USERPROFILE%\.claude\cc-launch.json`), creating defaults and backups if necessary. Preferences, servers, and profiles are materialised into dataclass instances.
 3. **UI bootstrap** – `ui.main_window.MainWindow` receives the loaded state plus service objects (`ProfileManager`, `TerminalManager`, `ServerValidator`). The window constructs child components (project selector, profile manager, server list, launch panel) and binds callbacks.
 4. **User interaction** – Actions performed in the UI invoke business-logic callbacks (e.g., toggling a server, saving a profile). `ConfigManager.save` writes updates atomically and maintains a backup file. Recent projects and preferences are synchronised on every relevant change.
-5. **Launch preparation** – When enough information is present (project path + enabled servers) the `TerminalManager` builds a temporary MCP configuration and returns a PowerShell snippet. The UI exposes the snippet for manual execution.
+5. **Launch preparation** – When enough information is present (project path + enabled servers) the `TerminalManager` builds a temporary MCP configuration and returns a platform-appropriate shell command (PowerShell for Windows, bash/zsh for Unix). The UI exposes the command for manual execution.
 
 ## Modules
 
@@ -22,15 +22,18 @@ The Claude Code Launcher is organised into modular layers that separate configur
 - Provides convenience methods for querying enabled servers.
 
 ### core/terminal_manager.py
-- Detects available terminals (Windows Terminal, PowerShell 7, PowerShell 5, CMD) with an optional PowerShell-only fallback.
-- Generates temporary MCP configuration files containing only enabled servers and expands environment variables (`%CD%`, `%USERPROFILE%`, `%TEMP%`).
-- Builds launch commands and exposes a copy-friendly PowerShell snippet (`get_launch_command`).
-- Includes utilities for multi-instance management and direct launching (retained for advanced uses or future UI hooks).
+- Detects available shells/terminals on all platforms:
+  - Windows: Windows Terminal, PowerShell 7, PowerShell 5, CMD
+  - macOS: zsh (default since Catalina), bash, sh
+  - Linux: bash, zsh, sh
+- Generates temporary MCP configuration files containing only enabled servers.
+- Expands environment variables in a cross-platform manner (`%VAR%`/`$VAR` on Windows, `$VAR`/`${VAR}` on Unix).
+- Builds platform-appropriate launch commands (`get_launch_command`).
 
 ### core/server_validator.py
 - Performs command/package validation for MCP servers.
 - Checks npm registry availability and global installation status with caching (24-hour JSON cache stored alongside the main configuration).
-- Supports forced refresh and integration with the UI’s status indicators.
+- Supports forced refresh and integration with the UI's status indicators.
 
 ### models/
 - Dataclasses describe persisted structures (`Preferences`, `MCPServer`, `Profile`, `ValidationStatus`).
@@ -48,15 +51,19 @@ The Claude Code Launcher is organised into modular layers that separate configur
 - `dialogs/` – modal windows for adding/editing servers and profiles.
 
 ### tests/
-- Pytest suite covering configuration, validation, profiles, terminal logic, UI components, and multi-instance behaviour. See [`testing.md`](testing.md) for details.
+- Pytest suite covering configuration, validation, profiles, terminal logic, UI components, and cross-platform behaviors. See [`testing.md`](testing.md) for details.
 
 ## Persistence Model
-- **Configuration file** – `%USERPROFILE%\.claude\cc-launch.json` stores preferences, servers, and profiles.
-- **Backups** – `%USERPROFILE%\.claude\cc-launch.backup` mirrors the configuration on every save after the first.
-- **Lock file** – `%USERPROFILE%\.claude\cc-launch.lock` prevents concurrent writers.
-- **Validation cache** – `%USERPROFILE%\.claude\cc-validation-cache.json` caches npm lookup results for 24 hours.
-- **Logs** – `%USERPROFILE%\.claude\cc-launcher.log` (rotating 3 × 1 MB files) records operational events.
+- **Configuration file** – `~/.claude/cc-launch.json` stores preferences, servers, and profiles.
+- **Backups** – `~/.claude/cc-launch.backup` mirrors the configuration on every save after the first.
+- **Lock file** – `~/.claude/cc-launch.lock` prevents concurrent writers.
+- **Validation cache** – `~/.claude/cc-validation-cache.json` caches npm lookup results for 24 hours.
+- **Logs** – `~/.claude/cc-launcher.log` (rotating 3 × 1 MB files) records operational events.
 - **Temporary MCP configs** – Created in the OS temp directory and cleaned when new commands are generated or they are superseded.
+
+All paths use the user's home directory, which resolves to:
+- Windows: `%USERPROFILE%\.claude\`
+- macOS/Linux: `~/.claude/`
 
 ## Error Handling & Resilience
 - Extensive logging around configuration saves, validation errors, and launch preparation.
@@ -66,5 +73,4 @@ The Claude Code Launcher is organised into modular layers that separate configur
 
 ## Extensibility Considerations
 - Unused modules such as `core/project_profile_manager.py` are retained for backward compatibility but effectively disabled by the current configuration pipeline.
-- `TerminalManager.launch_claude_code` provides a direct execution path that can be reconnected to future UI controls if automatic launching is reintroduced.
 - Documentation of unimplemented features (e.g., MCP import) has been removed; any revival should create dedicated specs within the new `docs/` structure.

@@ -1,0 +1,6 @@
+# Claude Code MCP Manager - Unix-Specific Dependencies (macOS & Linux)
+# Install these in addition to requirements.txt on macOS and Linux
+
+# Credential Management
+keyring==25.5.0       # Secure credential storage (macOS Keychain, Linux Secret Service)
+

@@ -1,9 +1,11 @@
-"""System tray integration for Claude Code Launcher."""
+"""System tray integration for Claude Code MCP Manager."""
 
 import logging
+import os
+import sys
 import threading
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import pystray
 from PIL import Image
@@ -30,11 +32,11 @@ class SystemTrayManager:
 
         Args:
             tk_root: Tkinter root window
-            restore_callback: Function to restore main window
-            launch_callback: Function to launch Claude Code
+            restore_callback: Restore main window
+            launch_callback: Launch Claude Code
             icon_path: Path to icon file
-            get_recent_profiles_callback: Function to get recent profiles
-            switch_profile_callback: Function to switch profile
+            get_recent_profiles_callback: Get recent profiles
+            switch_profile_callback: Switch profile
         """
         self.tk_root = tk_root
         self.restore_callback = restore_callback
@@ -47,23 +49,38 @@ class SystemTrayManager:
 
         logger.info("SystemTrayManager initialized")
 
-    def create_tray_icon(self):
+    def create_tray_icon(self) -> bool:
         """
         Create and start system tray icon with menu.
-        Runs in a separate thread to avoid blocking Tkinter event loop.
+        Runs in separate thread to avoid blocking Tkinter.
+        
+        Returns:
+            True if tray icon was created successfully, False otherwise
         """
         try:
-            # Load icon image
+            preferences = getattr(self.tk_root, "preferences", None)
+            if preferences is not None and getattr(preferences, "tray_enabled", True) is False:
+                logger.info("System tray disabled via user preference")
+                return False
+
+            if not self._is_tray_available():
+                logger.warning("System tray not available on this platform/desktop environment")
+                if hasattr(self.tk_root, "show_tray_unavailable_message"):
+                    self.tk_root.after(0, self.tk_root.show_tray_unavailable_message)
+                return False
+                
+            if self.icon is not None:
+                logger.debug("System tray icon already running")
+                return True
+
             icon_image = Image.open(self.icon_path)
             logger.info(f"Loaded icon from: {self.icon_path}")
 
-            # Create menu with recent profiles
             menu_items = [
                 pystray.MenuItem("Open Launcher", self._on_open),
                 pystray.MenuItem("Quick Launch", self._on_quick_launch),
             ]
 
-            # Add recent profiles submenu if callback provided
             if self.get_recent_profiles_callback and self.switch_profile_callback:
                 menu_items.append(pystray.Menu.SEPARATOR)
                 menu_items.append(
@@ -77,7 +94,6 @@ class SystemTrayManager:
 
             menu = pystray.Menu(*menu_items)
 
-            # Create icon
             self.icon = pystray.Icon(
                 "cc-launcher",
                 icon_image,
@@ -85,7 +101,6 @@ class SystemTrayManager:
                 menu
             )
 
-            # Run in separate thread
             self.tray_thread = threading.Thread(
                 target=self._run_tray_icon,
                 daemon=True
@@ -93,10 +108,52 @@ class SystemTrayManager:
             self.tray_thread.start()
 
             logger.info("System tray icon created and started")
+            return True
 
         except Exception as e:
             logger.error(f"Failed to create system tray icon: {e}")
-            raise
+            return False
+
+    def destroy_tray_icon(self):
+        """Stop the system tray icon if it is running."""
+        try:
+            if self.icon:
+                logger.info("Stopping system tray icon at user request")
+                try:
+                    self.icon.stop()
+                except Exception as exc:
+                    logger.error("Error stopping tray icon: %s", exc)
+                finally:
+                    self.icon = None
+
+            if self.tray_thread and self.tray_thread.is_alive():
+                logger.debug("Clearing tray thread reference")
+            self.tray_thread = None
+
+        except Exception as exc:
+            logger.error("Unexpected error while destroying tray icon: %s", exc)
+
+    def _is_tray_available(self) -> bool:
+        """Determine whether the current platform/desktop supports system tray icons."""
+        try:
+            # Windows and macOS provide tray support by default
+            if sys.platform == "win32" or sys.platform == "darwin":
+                return True
+
+            if sys.platform.startswith("linux"):
+                # Tray typically requires X11 or Wayland to be available
+                if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+                    return True
+                logger.warning("No DISPLAY or WAYLAND_DISPLAY detected; assuming no system tray support")
+                return False
+
+            # Unknown platform – assume tray is unavailable but keep logging for diagnostics
+            logger.warning("Unknown platform %s; treating system tray as unavailable", sys.platform)
+            return False
+
+        except Exception as exc:
+            logger.error("Error while checking system tray availability: %s", exc)
+            return False
 
     def _run_tray_icon(self):
         """Run the system tray icon (blocking call, runs in thread)."""
@@ -108,19 +165,16 @@ class SystemTrayManager:
     def _on_open(self, icon, item):
         """Handle 'Open Launcher' menu item - must be thread-safe."""
         logger.info("Open Launcher clicked from tray")
-        # Schedule callback in Tkinter main thread
         self.tk_root.after(0, self.restore_callback)
 
     def _on_quick_launch(self, icon, item):
         """Handle 'Quick Launch' menu item - must be thread-safe."""
         logger.info("Quick Launch clicked from tray")
-        # Schedule callback in Tkinter main thread
         self.tk_root.after(0, self.launch_callback)
 
     def _on_exit(self, icon, item):
         """Handle 'Exit' menu item - must be thread-safe."""
         logger.info("Exit clicked from tray")
-        # Schedule callback in Tkinter main thread
         self.tk_root.after(0, self.exit_app)
 
     def _create_profiles_menu(self, item):
@@ -158,7 +212,6 @@ class SystemTrayManager:
     def _on_profile_selected(self, profile_id: str):
         """Handle profile selection from tray menu."""
         logger.info(f"Profile '{profile_id}' selected from tray")
-        # Schedule callback in Tkinter main thread
         if self.switch_profile_callback:
             self.tk_root.after(0, lambda: self.switch_profile_callback(profile_id))
 

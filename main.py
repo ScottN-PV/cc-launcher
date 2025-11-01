@@ -1,4 +1,4 @@
-"""Claude Code Launcher - Main entry point."""
+"""Claude Code MCP Manager - Main entry point."""
 
 import logging
 import sys
@@ -12,31 +12,25 @@ from utils.constants import CONFIG_DIR
 
 
 def main():
-    """Main entry point for Claude Code Launcher."""
-
-    # Initialize logging first
+    """Main entry point for Claude Code MCP Manager."""
     setup_logging()
     logger = logging.getLogger(__name__)
 
     logger.info("=" * 60)
-    logger.info("Claude Code Launcher starting...")
+    logger.info("Claude Code MCP Manager starting...")
     logger.info("=" * 60)
 
     try:
-        # Initialize configuration manager
         logger.info("Initializing configuration manager...")
         config_manager = ConfigManager()
 
-        # Load configuration (creates default if missing)
         logger.info("Loading configuration...")
         config = config_manager.load()
         logger.info(f"Configuration loaded successfully")
 
-        # Create main window
         logger.info("Creating main window...")
         app = MainWindow(config_manager)
 
-        # Create system tray manager
         logger.info("Creating system tray manager...")
         icon_path = Path(__file__).parent / "assets" / "icon.ico"
 
@@ -49,18 +43,15 @@ def main():
             switch_profile_callback=app._on_profile_select
         )
 
-        # Connect tray manager to window
         app.set_tray_manager(tray_manager)
 
-        # Start system tray icon
         logger.info("Starting system tray icon...")
-        tray_manager.create_tray_icon()
+        if not tray_manager.create_tray_icon():
+            logger.info("System tray not started; continuing without tray icon")
 
-        # Start event loop
         logger.info("Starting UI event loop...")
         app.mainloop()
 
-        # Cleanup on exit
         logger.info("Cleaning up...")
         if tray_manager.icon:
             tray_manager.icon.stop()

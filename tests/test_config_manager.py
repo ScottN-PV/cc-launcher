@@ -117,7 +117,7 @@ class TestConfigManagerLoad:
         # Check defaults
         assert isinstance(prefs, Preferences)
         assert prefs.theme == "dark"
-        assert prefs.default_path == "C:\\Dev"
+        assert prefs.default_path == ""
 
         # Check templates loaded
         assert len(servers) == len(MCP_SERVER_TEMPLATES)
